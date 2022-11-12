@@ -8,10 +8,10 @@ import Html exposing (Html)
 -- MAIN
 
 
-main : Program { height : Int, width : Int } Model Msg
+main : Program () Model Msg
 main =
     Browser.element
-        { init = \flags -> ( init flags, Cmd.none )
+        { init = \_ -> ( init, Cmd.none )
         , update = \msg model -> ( update msg model, Cmd.none )
         , subscriptions = subscriptions
         , view = view
@@ -23,12 +23,12 @@ main =
 
 
 type alias Model =
-    { window : { width : Int, height : Int } }
+    { count : Int }
 
 
-init : { width : Int, height : Int } -> Model
-init window =
-    { window = window }
+init : Model
+init =
+    { count = 0 }
 
 
 
