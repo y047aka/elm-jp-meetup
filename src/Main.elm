@@ -1,7 +1,9 @@
 module Main exposing (main)
 
 import Browser
-import Html exposing (Html)
+import Html exposing (..)
+import Task
+import Time
 
 
 
@@ -11,10 +13,10 @@ import Html exposing (Html)
 main : Program () Model Msg
 main =
     Browser.element
-        { init = \_ -> ( init, Cmd.none )
-        , update = \msg model -> ( update msg model, Cmd.none )
-        , subscriptions = subscriptions
+        { init = init
         , view = view
+        , update = update
+        , subscriptions = subscriptions
         }
 
 
@@ -23,12 +25,16 @@ main =
 
 
 type alias Model =
-    { count : Int }
+    { zone : Time.Zone
+    , time : Time.Posix
+    }
 
 
-init : Model
-init =
-    { count = 0 }
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( Model Time.utc (Time.millisToPosix 0)
+    , Task.perform AdjustTimeZone Time.here
+    )
 
 
 
@@ -36,14 +42,22 @@ init =
 
 
 type Msg
-    = NoOp
+    = Tick Time.Posix
+    | AdjustTimeZone Time.Zone
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        NoOp ->
-            model
+        Tick newTime ->
+            ( { model | time = newTime }
+            , Cmd.none
+            )
+
+        AdjustTimeZone newZone ->
+            ( { model | zone = newZone }
+            , Cmd.none
+            )
 
 
 
@@ -52,7 +66,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch []
+    Time.every 1000 Tick
 
 
 
@@ -61,4 +75,14 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-    Html.text "hello"
+    let
+        hour =
+            String.fromInt (Time.toHour model.zone model.time)
+
+        minute =
+            String.fromInt (Time.toMinute model.zone model.time)
+
+        second =
+            String.fromInt (Time.toSecond model.zone model.time)
+    in
+    h1 [] [ text (hour ++ ":" ++ minute ++ ":" ++ second) ]
