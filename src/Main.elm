@@ -34,7 +34,7 @@ type alias Model =
 
 
 type Timer
-    = Ready
+    = Ready Int
     | Counting { startedAt : Time.Posix, splitTime : Int }
     | Stopped { startedAt : Time.Posix, stoppedAt : Time.Posix, splitTime : Int }
 
@@ -43,7 +43,7 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { zone = Time.utc
       , time = Time.millisToPosix 0
-      , timer = Ready
+      , timer = Ready (-5 * 1000)
       }
     , Task.perform AdjustTimeZone Time.here
     )
@@ -72,8 +72,8 @@ update msg model =
 
         Start ->
             ( case model.timer of
-                Ready ->
-                    { model | timer = Counting { startedAt = model.time, splitTime = 0 } }
+                Ready initialTime ->
+                    { model | timer = Counting { startedAt = model.time, splitTime = initialTime } }
 
                 Stopped { startedAt, stoppedAt, splitTime } ->
                     { model | timer = Counting { startedAt = model.time, splitTime = splitTime + Time.diff Millisecond model.zone startedAt stoppedAt } }
@@ -94,7 +94,7 @@ update msg model =
             )
 
         Reset ->
-            ( { model | timer = Ready }, Cmd.none )
+            ( { model | timer = Ready (-5 * 1000) }, Cmd.none )
 
 
 
@@ -148,8 +148,8 @@ viewElapsedTime { zone, time, timer } =
     div []
         [ text <|
             case timer of
-                Ready ->
-                    "00:00:00"
+                Ready initialTime ->
+                    initialTime |> toDigitalString
 
                 Counting { startedAt, splitTime } ->
                     (splitTime + Time.diff Millisecond zone startedAt time) |> toDigitalString
@@ -161,40 +161,43 @@ viewElapsedTime { zone, time, timer } =
 
 toDigitalString : Int -> String
 toDigitalString time =
+    if time >= 0 then
+        toDigitalString_ time
+
+    else
+        let
+            time_ =
+                time |> toFloat |> (\float -> float / 1000) |> floor |> (*) 1000 |> abs
+        in
+        "-" ++ toDigitalString_ time_
+
+
+toDigitalString_ : Int -> String
+toDigitalString_ time =
     let
-        absolute =
-            abs time
-
-        sign =
-            if time < 0 then
-                "-"
-
-            else
-                ""
-
         hours =
-            (absolute // 3600000)
+            (time // 3600000)
                 |> String.fromInt
                 |> String.padLeft 2 '0'
 
         minutes =
-            (modBy 3600000 absolute // 60000)
+            (modBy 3600000 time // 60000)
                 |> String.fromInt
                 |> String.padLeft 2 '0'
 
         seconds =
-            (modBy 60000 absolute // 1000)
+            (modBy 60000 time // 1000)
                 |> String.fromInt
                 |> String.padLeft 2 '0'
     in
-    sign ++ String.join ":" [ hours, minutes, seconds ]
+    String.join ":" [ hours, minutes, seconds ]
 
 
 viewTimerControl : Model -> Html Msg
 viewTimerControl model =
     div [] <|
         case model.timer of
-            Ready ->
+            Ready _ ->
                 [ button [ onClick Start ] [ text "Start" ] ]
 
             Counting _ ->
