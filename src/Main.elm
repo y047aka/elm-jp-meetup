@@ -1,8 +1,11 @@
 module Main exposing (main)
 
 import Browser
-import Html exposing (Html, button, div, text)
-import Html.Events exposing (onClick)
+import Css exposing (..)
+import Css.Global exposing (everything, global)
+import Html.Styled as Html exposing (Html, button, div, header, section, text, toUnstyled)
+import Html.Styled.Attributes exposing (css)
+import Html.Styled.Events exposing (onClick)
 import Task
 import Time
 import Time.Extra as Time exposing (Interval(..))
@@ -16,7 +19,7 @@ main : Program () Model Msg
 main =
     Browser.element
         { init = init
-        , view = view
+        , view = view >> toUnstyled
         , update = update
         , subscriptions = subscriptions
         }
@@ -113,9 +116,18 @@ subscriptions _ =
 view : Model -> Html Msg
 view model =
     Html.node "body"
-        []
-        [ viewDigitalClock { zone = model.zone, time = model.time }
-        , viewTimer model
+        [ css
+            [ height (vh 100)
+            , property "display" "grid"
+            , property "grid-template-rows" "1fr auto 1fr"
+            , backgroundColor (hsl 0 0 0.3)
+            , color (hsl 0 0 1)
+            ]
+        ]
+        [ global [ everything [ boxSizing borderBox, margin zero, padding zero ] ]
+        , header [ css [ padding (em 0.5) ] ]
+            [ viewDigitalClock { zone = model.zone, time = model.time } ]
+        , section [ css [ displayFlex, flexDirection column, alignItems center ] ] [ viewTimer model ]
         ]
 
 
@@ -132,12 +144,12 @@ viewDigitalClock { zone, time } =
                 |> String.fromInt
                 |> String.padLeft 2 '0'
     in
-    text (hour ++ ":" ++ minute)
+    div [ css [ fontSize (em 2), fontWeight bold ] ] [ text (hour ++ ":" ++ minute) ]
 
 
 viewTimer : Model -> Html Msg
 viewTimer model =
-    div []
+    div [ css [ displayFlex, flexDirection column, property "row-gap" "2em" ] ]
         [ viewElapsedTime model
         , viewTimerControl model
         ]
@@ -145,7 +157,7 @@ viewTimer model =
 
 viewElapsedTime : Model -> Html Msg
 viewElapsedTime { zone, time, timer } =
-    div []
+    div [ css [ lineHeight (num 1), fontSize (em 8), fontWeight bold ] ]
         [ text <|
             case timer of
                 Ready initialTime ->
@@ -195,15 +207,26 @@ toDigitalString_ time =
 
 viewTimerControl : Model -> Html Msg
 viewTimerControl model =
-    div [] <|
+    let
+        button_ =
+            Html.styled button
+                [ padding2 (em 0.2) (em 0.8)
+                , fontSize (em 1.2)
+                , backgroundColor (hsl 0 0 0.5)
+                , color (hsl 0 0 1)
+                , borderWidth zero
+                , borderRadius (em 0.3)
+                ]
+    in
+    div [ css [ displayFlex, justifyContent center, property "column-gap" "0.5em" ] ] <|
         case model.timer of
             Ready _ ->
-                [ button [ onClick Start ] [ text "Start" ] ]
+                [ button_ [ onClick Start ] [ text "Start" ] ]
 
             Counting _ ->
-                [ button [ onClick Pause ] [ text "Pause" ] ]
+                [ button_ [ onClick Pause ] [ text "Pause" ] ]
 
             Stopped _ ->
-                [ button [ onClick Start ] [ text "Resume" ]
-                , button [ onClick Reset ] [ text "Reset" ]
+                [ button_ [ onClick Start ] [ text "Resume" ]
+                , button_ [ onClick Reset ] [ text "Reset" ]
                 ]
