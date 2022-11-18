@@ -1,0 +1,32 @@
+[
+  {
+    "title": "Elm Meetup in Summer (2019)からのdiff",
+    "speaker": "ymtszw",
+    "url": "./"
+  },
+  {
+    "title": "Elm LandでElm入門",
+    "speaker": "ねぎぼうづ",
+    "url": "https://speakerdeck.com/negiboudu/elm-landteelmru-men"
+  },
+  {
+    "title": "Elm でつくるルービックキューブ",
+    "speaker": "カシフクトモヤ",
+    "url": "https://speakerdeck.com/tnyo43/elm-detukururubitukukiyubu"
+  },
+  {
+    "title": "大規模なelmプロジェクトのコンパイル時間の話",
+    "speaker": "tsukimizake774",
+    "url": "https://tsukimizake.github.io/elm-compilation-time-slide/"
+  },
+  {
+    "title": "TEPAでシナリオ駆動開発",
+    "speaker": "ヤギのさくらちゃん",
+    "url": "https://qiita.com/arowM/items/873c2b055acc54ffa901"
+  },
+  {
+    "title": "Unisonの話",
+    "speaker": "miyamo",
+    "url": "https://scrapbox.io/miyamoen/elm-jp_online_Unisonの話_資料"
+  }
+]

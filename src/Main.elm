@@ -2,10 +2,12 @@ module Main exposing (main)
 
 import Browser
 import Css exposing (..)
-import Css.Global exposing (everything, global)
-import Html.Styled as Html exposing (Html, button, div, header, section, text, toUnstyled)
-import Html.Styled.Attributes exposing (css)
+import Css.Global exposing (adjacentSiblings, everything, global)
+import Html.Styled as Html exposing (Html, a, button, div, header, input, label, li, main_, section, text, toUnstyled, ul)
+import Html.Styled.Attributes exposing (css, for, id, name, type_)
 import Html.Styled.Events exposing (onClick)
+import Http
+import Json.Decode as Decode exposing (Decoder)
 import Task
 import Time
 import Time.Extra as Time exposing (Interval(..))
@@ -33,6 +35,7 @@ type alias Model =
     { zone : Time.Zone
     , time : Time.Posix
     , timer : Timer
+    , presentations : List Presentation
     }
 
 
@@ -42,14 +45,36 @@ type Timer
     | Stopped { startedAt : Time.Posix, stoppedAt : Time.Posix, splitTime : Int }
 
 
+type alias Presentation =
+    { title : String
+    , speaker : String
+    , url : String
+    }
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { zone = Time.utc
       , time = Time.millisToPosix 0
       , timer = Ready (-5 * 1000)
+      , presentations = []
       }
-    , Task.perform AdjustTimeZone Time.here
+    , Cmd.batch
+        [ Task.perform AdjustTimeZone Time.here
+        , Http.get
+            { url = "/presentations.json"
+            , expect = Http.expectJson Loaded (Decode.list presentationDecoder)
+            }
+        ]
     )
+
+
+presentationDecoder : Decoder Presentation
+presentationDecoder =
+    Decode.map3 Presentation
+        (Decode.field "title" Decode.string)
+        (Decode.field "speaker" Decode.string)
+        (Decode.field "url" Decode.string)
 
 
 
@@ -62,6 +87,7 @@ type Msg
     | Start
     | Pause
     | Reset
+    | Loaded (Result Http.Error (List Presentation))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -99,6 +125,12 @@ update msg model =
         Reset ->
             ( { model | timer = Ready (-5 * 1000) }, Cmd.none )
 
+        Loaded (Ok decoded) ->
+            ( { model | presentations = decoded }, Cmd.none )
+
+        Loaded (Err _) ->
+            ( model, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -119,7 +151,7 @@ view model =
         [ css
             [ height (vh 100)
             , property "display" "grid"
-            , property "grid-template-rows" "1fr auto 1fr"
+            , property "grid-template-rows" "auto 1fr"
             , backgroundColor (hsl 0 0 0.3)
             , color (hsl 0 0 1)
             ]
@@ -127,7 +159,18 @@ view model =
         [ global [ everything [ boxSizing borderBox, margin zero, padding zero ] ]
         , header [ css [ padding (em 0.5) ] ]
             [ viewDigitalClock { zone = model.zone, time = model.time } ]
-        , section [ css [ displayFlex, flexDirection column, alignItems center ] ] [ viewTimer model ]
+        , main_
+            [ css
+                [ displayFlex
+                , flexDirection column
+                , justifyContent center
+                , alignItems center
+                , property "row-gap" "3em"
+                ]
+            ]
+            [ section [] [ viewTimer model ]
+            , section [] [ viewtimeTable model.presentations ]
+            ]
         ]
 
 
@@ -212,8 +255,8 @@ viewTimerControl model =
             Html.styled button
                 [ padding2 (em 0.2) (em 0.8)
                 , fontSize (em 1.2)
-                , backgroundColor (hsl 0 0 0.5)
-                , color (hsl 0 0 1)
+                , backgroundColor (hsl 0 0 0.2)
+                , color (hsl 0 0 0.7)
                 , borderWidth zero
                 , borderRadius (em 0.3)
                 ]
@@ -230,3 +273,45 @@ viewTimerControl model =
                 [ button_ [ onClick Start ] [ text "Resume" ]
                 , button_ [ onClick Reset ] [ text "Reset" ]
                 ]
+
+
+viewtimeTable : List Presentation -> Html msg
+viewtimeTable presentations =
+    ul [] <|
+        List.map
+            (\{ title, speaker } ->
+                li [ css [ listStyle none ] ]
+                    [ input
+                        [ id title
+                        , type_ "radio"
+                        , name "presentations"
+                        , css
+                            [ display none
+                            , checked
+                                [ adjacentSiblings
+                                    [ Css.Global.label
+                                        [ backgroundColor (hsl 0 0 0.2), color (hsl 0 0 1) ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                        []
+                    , label
+                        [ for title
+                        , css
+                            [ display block
+                            , padding2 (em 0.8) (em 1.5)
+                            , letterSpacing (em 0.01)
+                            , textDecoration none
+                            , color (hsl 0 0 0.45)
+                            , borderRadius (em 1)
+                            , cursor pointer
+                            , hover [ color (hsl 0 0 0.9) ]
+                            ]
+                        ]
+                        [ div [ css [ fontSize (em 1.2) ] ] [ text title ]
+                        , div [ css [ fontSize (em 0.8) ] ] [ text speaker ]
+                        ]
+                    ]
+            )
+            presentations
